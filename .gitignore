@@ -1,0 +1,14 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+IMPLEMENTATION_SUMMARY.md
+QUICK_REFERENCE.md
+SSE_GUIDE.md
+example_sse_client.py
