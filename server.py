@@ -445,9 +445,23 @@ if __name__ == "__main__":
         print(f"Starting Yahoo Finance MCP server with SSE transport on {args.host}:{args.port}...")
         # For SSE transport, use uvicorn with the FastMCP sse_app
         import uvicorn
+        from starlette.responses import JSONResponse
+        from starlette.routing import Route, Mount
+        from starlette.applications import Starlette
         
         # Get the ASGI app from FastMCP
-        app = yfinance_server.sse_app()
+        mcp_app = yfinance_server.sse_app()
+        
+        # Create a health check endpoint
+        async def health_check(request):
+            return JSONResponse({"status": "healthy", "service": "yahoo-finance-mcp"})
+        
+        # Create a new Starlette app with both health check and MCP routes
+        app = Starlette(routes=[
+            Route("/", health_check),
+            Route("/health", health_check),
+            Mount("/sse", app=mcp_app),
+        ])
         
         # Run with uvicorn
         uvicorn.run(app, host=args.host, port=args.port)
