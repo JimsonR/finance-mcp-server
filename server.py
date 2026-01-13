@@ -447,28 +447,17 @@ if __name__ == "__main__":
         import uvicorn
         from starlette.responses import JSONResponse
         from starlette.routing import Route
-        from starlette.middleware import Middleware
-        from starlette.applications import Starlette
         
         # Get the ASGI app from FastMCP
-        mcp_app = yfinance_server.sse_app()
+        app = yfinance_server.sse_app()
         
-        # Create a wrapper app that handles health checks and forwards SSE to MCP
+        # Add health check route to the MCP app
         async def health_check(request):
             return JSONResponse({"status": "healthy", "service": "yahoo-finance-mcp"})
         
-        async def sse_handler(request):
-            # Forward to the MCP app
-            return await mcp_app(request.scope, request.receive, request._send)
-        
-        # Create routes
-        routes = [
-            Route("/", health_check, methods=["GET", "HEAD"]),
-            Route("/health", health_check, methods=["GET", "HEAD"]),
-            Route("/sse", sse_handler, methods=["GET", "POST"]),
-        ]
-        
-        app = Starlette(routes=routes)
+        # Add the health route to the existing app
+        app.routes.insert(0, Route("/", health_check, methods=["GET", "HEAD"]))
+        app.routes.insert(0, Route("/health", health_check, methods=["GET", "HEAD"]))
         
         # Run with uvicorn
         uvicorn.run(app, host=args.host, port=args.port)
