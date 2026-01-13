@@ -443,21 +443,45 @@ if __name__ == "__main__":
         yfinance_server.run(transport="stdio")
     else:  # sse
         print(f"Starting Yahoo Finance MCP server with SSE transport on {args.host}:{args.port}...")
-        # For SSE transport, use uvicorn with the FastMCP sse_app
+        # For SSE transport, use the built-in FastMCP SSE support
         import uvicorn
+        from starlette.middleware.cors import CORSMiddleware
         from starlette.responses import JSONResponse
         from starlette.routing import Route
         
-        # Get the ASGI app from FastMCP
+        # Get the ASGI app from FastMCP - this handles the SSE protocol
         app = yfinance_server.sse_app()
         
-        # Add health check route to the MCP app
+        # Add health check route
         async def health_check(request):
             return JSONResponse({"status": "healthy", "service": "yahoo-finance-mcp"})
         
-        # Add the health route to the existing app
-        app.routes.insert(0, Route("/", health_check, methods=["GET", "HEAD"]))
+        # Insert health routes at the beginning
         app.routes.insert(0, Route("/health", health_check, methods=["GET", "HEAD"]))
+        app.routes.insert(0, Route("/", health_check, methods=["GET", "HEAD"]))
+        
+        # Add CORS middleware - FastMCP's sse_app already returns a Starlette app
+        # We need to add CORS headers to allow cross-origin SSE connections
+        from starlette.middleware import Middleware
+        from starlette.applications import Starlette
+        
+        # Create a new app with CORS middleware
+        app_with_cors = Starlette(
+            routes=app.routes,
+            middleware=[
+                Middleware(
+                    CORSMiddleware,
+                    allow_origins=["*"],
+                    allow_credentials=True,
+                    allow_methods=["*"],
+                    allow_headers=["*"],
+                    expose_headers=["*"],
+                )
+            ],
+        )
         
         # Run with uvicorn
-        uvicorn.run(app, host=args.host, port=args.port)
+        print(f"✅ Server will be available at http://{args.host}:{args.port}")
+        print(f"📡 SSE endpoint: http://{args.host}:{args.port}/sse")
+        print(f"💚 Health check: http://{args.host}:{args.port}/health")
+        uvicorn.run(app_with_cors, host=args.host, port=args.port)
