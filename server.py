@@ -413,6 +413,8 @@ async def get_recommendations(ticker: str, recommendation_type: str, months_back
 
 
 if __name__ == "__main__":
+    import os
+    
     parser = argparse.ArgumentParser(
         description="Yahoo Finance MCP Server with HTTP/SSE streaming support"
     )
@@ -420,8 +422,8 @@ if __name__ == "__main__":
         "--transport",
         type=str,
         choices=["stdio", "sse"],
-        default="stdio",
-        help="Transport type to use (stdio or sse). Default: stdio",
+        default="sse",  # Default to SSE for Render deployment
+        help="Transport type to use (stdio or sse). Default: sse",
     )
     parser.add_argument(
         "--host",
@@ -432,11 +434,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "--port",
         type=int,
-        default=8000,
-        help="Port to bind the SSE server to (only used with --transport sse). Default: 8000",
+        default=None,
+        help="Port to bind the SSE server to (only used with --transport sse). Default: PORT env var or 8000",
     )
     
     args = parser.parse_args()
+    
+    # Use PORT from environment if not specified via CLI
+    if args.port is None:
+        args.port = int(os.environ.get("PORT", 8000))
     
     if args.transport == "stdio":
         print("Starting Yahoo Finance MCP server with stdio transport...")
